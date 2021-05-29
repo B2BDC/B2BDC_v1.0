@@ -1,0 +1,62 @@
+function y = sedumiquadfit2norm(X,Y,vars,nCV)
+% Quadratic fit of the given data X(nSample-by-nVariable) and
+% Y(nSample-by-1) with variable information in the
+% B2BDC.B2Bvariables.VariableList object vars. The fitting criteria is to
+% minimize the 2-norm of error
+% output:
+% A B2BDC.B2Bmodels.QModel object
+
+% Created: July 22, 2015    Wenyu Li
+
+[n_sample, n_variable] = size(X);
+if ~isvector(Y) || n_sample ~= length(Y)
+   error('Wrong dimension of input data')
+end
+if nCV == 1
+   xNew = B2BDC.Fitting.expandBasis(X);
+   coefVec = xNew\Y;
+   c1 = B2BDC.Fitting.vec2coef(coefVec,n_variable);
+   y = B2BDC.B2Bmodels.QModel(c1,vars);
+   yhat = xNew * coefVec;
+   err = abs(yhat-Y);
+   y.ErrorStats.absMax = max(err);
+   y.ErrorStats.absAvg = mean(err);
+   err = err./abs(Y);
+   y.ErrorStats.relMax = max(err);
+   y.ErrorStats.relAvg = mean(err);
+else
+   nTest = floor(n_sample/nCV);
+   err.absMax = 0;
+   err.absAvg = 0;
+   err.relMax = 0;
+   err.relAvg = 0;
+   for i = 1:nCV
+      if i ~= nCV
+         idTest = (1:nTest)+(i-1)*nTest;
+      else
+         idTest = (nCV-1)*nTest+1:n_sample;
+      end
+      idTrain = setdiff(1:n_sample,idTest);
+      xTrain = X(idTrain,:);
+      yTrain = Y(idTrain);
+      xTest = X(idTest,:);
+      yTest = Y(idTest);
+      xFit = B2BDC.Fitting.expandBasis(xTrain);
+      xTest = B2BDC.Fitting.expandBasis(xTest);
+      coefVec = xFit\yTrain;
+      dy = abs(xTest*coefVec-yTest);
+      err.absMax = max(err.absMax,max(dy));
+      err.absAvg = err.absAvg+mean(dy);
+      dy = dy./abs(yTest);
+      err.relMax = max(err.relMax,max(dy));
+      err.relAvg = err.relAvg+mean(dy);
+   end
+   xNew = B2BDC.Fitting.expandBasis(X);
+   coefVec = xNew\Y;
+   c1 = B2BDC.Fitting.vec2coef(coefVec,n_variable);
+   y = B2BDC.B2Bmodels.QModel(c1,vars);
+   y.ErrorStats.absMax = err.absMax;
+   y.ErrorStats.absAvg = err.absAvg/nCV;
+   y.ErrorStats.relMax = err.relMax;
+   y.ErrorStats.relAvg = err.relAvg/nCV;
+end

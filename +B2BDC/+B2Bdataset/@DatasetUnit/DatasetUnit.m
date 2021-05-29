@@ -1,0 +1,96 @@
+classdef DatasetUnit
+    % A DatasetUnit belonging to the B2BDC Dataset
+   
+   % Created: June 17, 2015     myf,  Wenyu Li
+   % Modified: December 11, 2015    Jim Oreluk - Added error message if
+   % ub < lb
+   
+   properties
+      Name   % Descriptive name for the dataset unit
+      LowerBound   % Lower bound of the observed experimental value
+      ObservedValue  % Experimental Value
+      UpperBound   % Upper bound of the observed experimental value
+      SurrogateModel  % Surrogate model representing the experiment
+   end
+   
+   properties (Dependent)
+      VariableList  % VariableList object containing all model variables associated with this dataset unit
+   end
+   
+   properties (SetAccess = public)
+      ScenarioParameter % Scenario parameters of the dataset unit
+   end
+   
+   methods
+      function obj = DatasetUnit(dsUnitname,modelObj,LB,UB,val,sv)
+         % Constructor of the B2BDC.B2Bdataset.DatasetUnit object.
+            %
+            % The input arguments are:
+            %   name - a string defining a descriptive name for the dataset unit
+            %   modelObj - A B2BDC.B2Bmodels.Model subclass
+            %   LowerBound - Lower bound on the ObservedValue
+            %   UpperBound - Upper bound on the ObservedValue
+            %   ObservedValue - Experimental observation (optional). If not defined, ObservedValue is calculated as the mean of LowerBound and UpperBound.
+            %   ScenarioParameter - A structure contains value and name of the scenario parameter
+         if nargin > 0
+            obj.Name = char(dsUnitname);
+            if ~isa(modelObj,'B2BDC.B2Bmodels.Model')
+               error('Model must be a Model class object.')
+            else
+               obj.SurrogateModel = modelObj;
+            end
+            if ~isscalar(UB) || ~isscalar(LB)
+               error('Upper and lower bounds should be scalar values.')
+            else
+               obj.LowerBound = LB;
+               obj.UpperBound = UB;
+            end
+            if nargin > 4 && ~isempty(val)
+               obj.ObservedValue = val;
+            else
+               obj.ObservedValue = 0.5*(LB+UB);
+            end
+            if nargin > 5
+               obj.ScenarioParameter.Value = sv.Value;
+               obj.ScenarioParameter.Name = sv.Name;
+            else
+               obj.ScenarioParameter.Value = [];
+               obj.ScenarioParameter.Name = [];
+            end
+         end
+      end
+      
+      function y = get.VariableList(obj)
+         %   Y = VARIABLELIST(OBJ) returns the B2BDC.B2Bvariable.VariableList
+         %   from the OBJ.SurrogateModel.
+         model = obj.SurrogateModel;
+         y = model.Variables;
+      end
+      
+      function y = changeBounds(obj,newbd)
+          % changeBounds(obj, newbd) changes the lower and upper bounds of the dataset
+          % unit if newbd has 2 elements; it changes the lower and upper bound, as well as the
+          % nominal value if newbd has 3 elements.
+         lb = newbd(1);
+         ub = newbd(2);
+         if ub < lb
+             error('Upper bound cannot be less than the lower bound.')
+         end
+         dsName= obj.Name;
+         dsMod = obj.SurrogateModel;
+         if length(newbd) < 3
+            ob = 0.5*(lb+ub);
+         else
+            ob = newbd(3);
+         end
+         y = B2BDC.B2Bdataset.DatasetUnit(dsName,dsMod,lb,ub,ob);
+      end
+   end
+   
+   methods (Hidden = true)
+      flag = quadratictest(dsUnits)
+      y = lintest(dsUnits)
+   end
+   
+end
+
