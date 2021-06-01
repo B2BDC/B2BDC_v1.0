@@ -24,8 +24,10 @@ epsilon = 1e-4;
 ac = 0;
 if obj.ModelDiscrepancyFlag
    nVar = obj.Variables.Length+obj.ModelDiscrepancy.Variables.Length;
+   H = [obj.Variables.calBound; obj.ModelDiscrepancy.Variables.calBound];
 else
    nVar = obj.Variables.Length;
+   H = [obj.Variables.calBound];
 end
 if isempty(sig0)
    opt2 = generateOpt;
@@ -174,7 +176,7 @@ status.WarmStart = warmstart;
       sigms = (diff(bds,[],2)).^2/2/nsig^2;
       f = @func;
       function y = func(x)
-         if any(abs(x)>1)
+         if any(x>H(:,2)) || any(x<H(:,1))
             y = -inf;
             return
          end
