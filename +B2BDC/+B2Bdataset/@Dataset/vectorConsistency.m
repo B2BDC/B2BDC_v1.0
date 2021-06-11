@@ -79,10 +79,6 @@ elseif size(wX,1) ~= nVar
 end
 
 if nargin < 4
-    nInit =1;
-end
-
-if nargin < 5
    opt = generateOpt;
 end
 units = dsObj.DatasetUnits.Values;
